@@ -322,7 +322,37 @@ tbody td.orange{ color: var(--accent3); }
 }
 .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: pulse 2s infinite; flex-shrink: 0; }
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+/* ── LIGHT MODE ── */
+:root.light {
+  --bg:       #f2f2ed;
+  --surface:  #ffffff;
+  --surface2: #f7f7f3;
+  --border:   #deded6;
+  --accent:   #527a00;
+  --accent2:  #006e96;
+  --accent3:  #a04c00;
+  --accent4:  #5c32b0;
+  --text:     #18181c;
+  --muted:    #808088;
+  --error:    #cc2200;
+}
+:root.light body {
+  background-image:
+    radial-gradient(ellipse 50% 40% at 10% 10%, rgba(82,122,0,0.05) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 50% at 90% 90%, rgba(0,110,150,0.04) 0%, transparent 60%);
+  transition: background 0.3s, color 0.3s;
+}
+:root.light .card { box-shadow: 0 2px 16px rgba(0,0,0,0.07); }
+:root.light input, :root.light select { transition: background 0.3s, border-color 0.2s; }
 </style>
+<script>
+(function(){
+  var s = localStorage.getItem('theme');
+  var light = s ? s === 'light' : true;
+  if (light) document.documentElement.classList.add('light');
+})();
+</script>
 </head>
 <body>
 <div class="page-wrap">
@@ -598,5 +628,53 @@ function escHtml(s) {
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 </script>
+
+<style>
+.theme-toggle-btn {
+  position: fixed; top: 1rem; right: 1rem; z-index: 100;
+  display: flex; align-items: center; gap: 0.5rem;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 50px; padding: 0.35rem 0.75rem 0.35rem 0.55rem;
+  cursor: pointer; font-family: 'DM Mono', monospace;
+  font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--muted); transition: border-color 0.2s, background 0.3s;
+  box-shadow: 0 2px 12px var(--shadow, rgba(0,0,0,0.3));
+  text-decoration: none;
+}
+.theme-toggle-btn:hover { border-color: var(--accent); color: var(--text); }
+.toggle-track {
+  width: 28px; height: 16px; border-radius: 8px;
+  background: var(--border); position: relative; transition: background 0.3s; flex-shrink: 0;
+}
+:root.light .toggle-track { background: var(--accent); }
+.toggle-thumb {
+  position: absolute; top: 2px; left: 2px;
+  width: 12px; height: 12px; border-radius: 50%;
+  background: var(--muted); transition: transform 0.3s, background 0.3s;
+}
+:root.light .toggle-thumb { transform: translateX(12px); background: #fff; }
+</style>
+<button class="theme-toggle-btn" id="calcThemeToggle">
+  <div class="toggle-track"><div class="toggle-thumb"></div></div>
+  <span id="calcThemeIcon">☀️</span>
+</button>
+<script>
+(function(){
+  var btn = document.getElementById('calcThemeToggle');
+  var icon = document.getElementById('calcThemeIcon');
+  var root = document.documentElement;
+  function updateIcon() {
+    icon.textContent = root.classList.contains('light') ? '☀️' : '🌙';
+  }
+  updateIcon();
+  btn.addEventListener('click', function(){
+    var isLight = !root.classList.contains('light');
+    root.classList.toggle('light', isLight);
+    localStorage.setItem('theme', isLight ? 'light' : 'dark');
+    updateIcon();
+  });
+})();
+</script>
+
 </body>
 </html>

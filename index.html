@@ -335,9 +335,10 @@ footer a:hover { color: var(--text); }
     </div>
     <div class="header-right">
       <nav>
-        <a href="currency-converter.html">Měny</a>
-        <a href="hypotecni-kalkulacka.html">Hypotéka</a>
         <a href="investicni-kalkulacka.html">Investice</a>
+        <a href="hypotecni-kalkulacka.html">Hypotéka</a>
+        <a href="currency-converter.html">Měny</a>
+        <a href="dph-kalkulacka.html">DPH</a>
       </nav>
       <button class="theme-toggle" id="themeToggle" title="Přepnout světlý / tmavý režim" aria-label="Přepnout téma">
         <div class="toggle-track"><div class="toggle-thumb"></div></div>
@@ -352,8 +353,8 @@ footer a:hover { color: var(--text); }
     <h1>Finanční rozhodnutí<br>s <em>jasnou hlavou.</em></h1>
     <p class="hero-desc">
       Čtyři kalkulačky pro každodenní finanční plánování —
-      od aktuálních kurzů měn přes hypoteční splátky
-      až po modelování investičního portfolia.
+      od výpočtu investic a hypotečních splátek
+      přes převod měn až po výpočet DPH.
       Vše zdarma, bez reklam, přímo v prohlížeči.
     </p>
   </section>
@@ -366,16 +367,16 @@ footer a:hover { color: var(--text); }
 
   <div class="cards">
 
-    <a class="calc-card fade-up" href="currency-converter.html">
-      <span class="card-icon">💱</span>
-      <div class="card-tag">Live data · ECB</div>
-      <div class="card-title">Převodník měn</div>
-      <p class="card-desc">Aktuální kurzy přímo z Evropské centrální banky. Historický graf s výběrem období až 10 let.</p>
+    <a class="calc-card fade-up" href="investicni-kalkulacka.html">
+      <span class="card-icon">📈</span>
+      <div class="card-tag">Složené úroky · Inflace</div>
+      <div class="card-title">Investiční kalkulačka</div>
+      <p class="card-desc">Simulace růstu investice při pravidelném přispívání s přihlédnutím k inflaci a ročnímu navýšení příspěvků.</p>
       <div class="card-features">
-        <span class="chip">17 měn</span>
-        <span class="chip">Graf kurzu</span>
-        <span class="chip">1D – 10Y</span>
-        <span class="chip">Auto-refresh</span>
+        <span class="chip">Milníky</span>
+        <span class="chip">Reálná hodnota</span>
+        <span class="chip">Plán příspěvků</span>
+        <span class="chip">Zaokrouhlení</span>
       </div>
       <div class="card-cta">Otevřít kalkulačku <span class="cta-arrow">→</span></div>
     </a>
@@ -394,16 +395,16 @@ footer a:hover { color: var(--text); }
       <div class="card-cta">Otevřít kalkulačku <span class="cta-arrow">→</span></div>
     </a>
 
-    <a class="calc-card fade-up" href="investicni-kalkulacka.html">
-      <span class="card-icon">📈</span>
-      <div class="card-tag">Složené úroky · Inflace</div>
-      <div class="card-title">Investiční kalkulačka</div>
-      <p class="card-desc">Simulace růstu portfolia při pravidelném investování s přihlédnutím k inflaci a ročnímu navýšení příspěvků.</p>
+    <a class="calc-card fade-up" href="currency-converter.html">
+      <span class="card-icon">💱</span>
+      <div class="card-tag">Live data · ECB</div>
+      <div class="card-title">Převodník měn</div>
+      <p class="card-desc">Aktuální kurzy přímo z Evropské centrální banky. Historický graf s výběrem období až 10 let.</p>
       <div class="card-features">
-        <span class="chip">Milníky</span>
-        <span class="chip">Reálná hodnota</span>
-        <span class="chip">Plán příspěvků</span>
-        <span class="chip">Zaokrouhlení</span>
+        <span class="chip">17 měn</span>
+        <span class="chip">Graf kurzu</span>
+        <span class="chip">1D – 10Y</span>
+        <span class="chip">Auto-refresh</span>
       </div>
       <div class="card-cta">Otevřít kalkulačku <span class="cta-arrow">→</span></div>
     </a>
@@ -452,10 +453,9 @@ footer a:hover { color: var(--text); }
   const icon   = document.getElementById('themeIcon');
   const label  = document.getElementById('themeLabel');
 
-  // Načti uloženou volbu, jinak respektuj systémové nastavení
+  // Načti uloženou volbu, výchozí je světlý
   const saved = localStorage.getItem('theme');
-  const preferLight = window.matchMedia('(prefers-color-scheme: light)').matches;
-  const isLight = saved ? saved === 'light' : preferLight;
+  const isLight = saved ? saved === 'light' : true;
 
   function applyTheme(light) {
     root.classList.toggle('light', light);
