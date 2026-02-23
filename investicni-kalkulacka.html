@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Investiční kalkulačka</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg:       #0e0e10;
+  --surface:  #17171a;
+  --surface2: #1e1e22;
+  --border:   #2a2a30;
+  --accent:   #c8f060;   /* zelená – portfolio */
+  --accent2:  #60d4f0;   /* modrá  – vloženo   */
+  --accent3:  #f0a060;   /* oranžová – zisk    */
+  --accent4:  #b89cf0;   /* fialová – inflace  */
+  --text:     #e8e8ec;
+  --muted:    #6a6a78;
+  --error:    #f06060;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Mono', monospace;
+  min-height: 100vh;
+  padding: 2rem;
+  background-image:
+    radial-gradient(ellipse 50% 40% at 10% 10%, rgba(200,240,96,0.05) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 50% at 90% 90%, rgba(96,212,240,0.05) 0%, transparent 60%);
+}
+
+.page-wrap { max-width: 980px; margin: 0 auto; }
+
+/* ── HEADER ── */
+.page-header { margin-bottom: 2rem; }
+
+.live-badge {
+  display: flex; align-items: center; gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+.live-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--accent); animation: pulse 2s infinite;
+}
+.live-text {
+  font-size: 0.65rem; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--accent);
+}
+
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(1.8rem, 4vw, 2.8rem);
+  font-weight: 700; line-height: 1.1; letter-spacing: -0.02em;
+  background: linear-gradient(135deg, var(--text) 50%, var(--muted));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+
+.subtitle {
+  font-size: 0.72rem; color: var(--muted);
+  letter-spacing: 0.08em; text-transform: uppercase; margin-top: 0.3rem;
+}
+
+/* ── LAYOUT ── */
+.grid {
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+@media (max-width: 820px) { .grid { grid-template-columns: 1fr; } }
+
+/* ── CARD ── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1.75rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+}
+
+.card-title {
+  font-size: 0.66rem; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--muted);
+  margin-bottom: 1.5rem;
+}
+
+/* ── SLIDER BLOCKS ── */
+.slider-block { margin-bottom: 1.4rem; }
+.slider-block:last-of-type { margin-bottom: 0; }
+
+.slider-header {
+  display: flex; justify-content: space-between;
+  align-items: center; margin-bottom: 0.5rem;
+}
+
+.slider-label {
+  font-size: 0.66rem; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--muted);
+}
+
+.slider-value-wrap { display: flex; align-items: baseline; gap: 0.25rem; }
+
+.slider-input {
+  background: transparent; border: none;
+  border-bottom: 1.5px solid var(--border);
+  color: var(--text);
+  font-family: 'Playfair Display', serif; font-size: 1.1rem; font-weight: 700;
+  width: 100px; text-align: right; outline: none; padding: 2px 4px;
+  transition: border-color 0.2s;
+}
+.slider-input:focus { border-bottom-color: var(--accent); }
+
+.slider-suffix { color: var(--muted); font-size: 0.75rem; }
+.slider-hint   { color: var(--muted); font-size: 0.62rem; margin-top: 0.3rem; opacity: 0.7; }
+
+.slider-block.highlight {
+  background: rgba(200,240,96,0.04);
+  border: 1px solid rgba(200,240,96,0.15);
+  border-radius: 3px; padding: 0.9rem; margin-bottom: 1.4rem;
+}
+.slider-block.highlight .slider-label  { color: var(--accent); opacity: 0.85; }
+.slider-block.highlight .slider-input  { color: var(--accent); border-bottom-color: rgba(200,240,96,0.4); }
+.slider-block.highlight .slider-suffix { color: var(--accent); opacity: 0.7; }
+.slider-block.highlight .slider-hint   { color: var(--accent); opacity: 0.5; }
+
+input[type=range] {
+  width: 100%; -webkit-appearance: none;
+  height: 3px; border-radius: 2px; outline: none; cursor: pointer;
+  background: var(--border);
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%;
+  background: var(--accent); border: 2px solid var(--bg);
+  cursor: pointer; transition: transform 0.15s;
+}
+input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.3); }
+input[type=range]::-moz-range-thumb {
+  width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--bg);
+  background: var(--accent); cursor: pointer;
+}
+
+/* Invested box */
+.invested-box {
+  margin-top: 1.25rem; padding: 1rem;
+  background: var(--bg); border: 1px solid var(--border);
+  border-left: 3px solid var(--accent2); border-radius: 3px;
+}
+.invested-label { color: var(--muted); font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 0.35rem; }
+.invested-value { color: var(--accent2); font-size: 1.3rem; font-weight: 500; }
+
+/* ── RIGHT COLUMN ── */
+.right { display: flex; flex-direction: column; gap: 1.25rem; }
+
+/* ── STAT TILES ── */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.85rem;
+}
+@media (max-width: 500px) { .stats-grid { grid-template-columns: 1fr 1fr; } }
+
+.stat-tile {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 3px; padding: 1rem;
+}
+.stat-tile.s-green  { border-left: 3px solid var(--accent); }
+.stat-tile.s-orange { border-left: 3px solid var(--accent3); }
+.stat-tile.s-purple { border-left: 3px solid var(--accent4); }
+.stat-tile.s-blue   { border-left: 3px solid var(--accent2); }
+
+.stat-label { font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.4rem; }
+.stat-value { font-size: 1.4rem; font-weight: 500; letter-spacing: -0.01em; }
+.stat-sub   { font-size: 0.68rem; color: var(--muted); margin-top: 0.2rem; }
+.c-green  { color: var(--accent); }
+.c-orange { color: var(--accent3); }
+.c-purple { color: var(--accent4); }
+.c-blue   { color: var(--accent2); }
+
+/* ── CHART ── */
+.chart-wrap { position: relative; height: 250px; }
+
+.chart-legend {
+  display: flex; gap: 1.25rem; flex-wrap: wrap;
+  justify-content: center; margin-top: 0.9rem;
+}
+.legend-item { display: flex; align-items: center; gap: 0.5rem; }
+.legend-line { width: 22px; height: 2px; border-radius: 1px; }
+.legend-text { color: var(--muted); font-size: 0.68rem; }
+
+/* ── MILESTONES ── */
+.milestones-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.75rem;
+}
+
+.milestone {
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 3px; padding: 0.85rem;
+  transition: border-color 0.15s;
+}
+.milestone:hover { border-color: var(--accent); }
+.milestone-year   { color: var(--muted); font-size: 0.62rem; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 0.35rem; }
+.milestone-value  { color: var(--accent); font-size: 1rem; font-weight: 500; }
+.milestone-inv    { color: var(--muted); font-size: 0.65rem; margin-top: 0.2rem; }
+.milestone-return { color: var(--accent3); font-size: 0.65rem; margin-top: 0.15rem; font-weight: 500; }
+
+/* ── CONTRIBUTION TABLE ── */
+.table-controls {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1rem;
+}
+
+.toggle-group-col { display: flex; flex-direction: column; gap: 0.4rem; }
+
+.round-toggle {
+  display: flex; align-items: center; gap: 0.6rem;
+  cursor: pointer; user-select: none;
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 3px; padding: 0.45rem 0.75rem;
+  transition: border-color 0.15s;
+}
+.round-toggle:hover { border-color: var(--muted); }
+.round-toggle.active { border-color: var(--accent); background: rgba(200,240,96,0.05); }
+.round-toggle input[type=checkbox] { display: none; }
+
+.toggle-box {
+  width: 14px; height: 14px; border-radius: 2px;
+  border: 1.5px solid var(--border); flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s, border-color 0.15s;
+}
+.round-toggle.active .toggle-box { background: var(--accent); border-color: var(--accent); }
+.toggle-check { color: var(--bg); font-size: 9px; line-height: 1; display: none; }
+.round-toggle.active .toggle-check { display: block; }
+.toggle-label { font-size: 0.65rem; color: var(--muted); letter-spacing: 0.04em; }
+.round-toggle.active .toggle-label { color: var(--accent); }
+
+.table-wrap {
+  border: 1px solid var(--border); border-radius: 3px;
+  max-height: 320px; overflow-y: auto;
+}
+.table-wrap::-webkit-scrollbar { width: 5px; }
+.table-wrap::-webkit-scrollbar-track { background: var(--bg); }
+.table-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+.table-wrap::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+table { width: 100%; border-collapse: collapse; font-size: 0.75rem; }
+thead th {
+  background: var(--surface2); color: var(--muted);
+  font-size: 0.62rem; letter-spacing: 0.08em; text-transform: uppercase;
+  padding: 0.65rem 0.85rem; text-align: left;
+  position: sticky; top: 0; z-index: 1;
+  border-bottom: 1px solid var(--border);
+}
+thead th:last-child { text-align: right; }
+tbody tr { border-bottom: 1px solid rgba(255,255,255,0.04); transition: background 0.1s; }
+tbody tr:last-child { border-bottom: none; }
+tbody tr:hover { background: rgba(255,255,255,0.025); }
+tbody tr.first-row { background: rgba(200,240,96,0.04); }
+tbody td { padding: 0.55rem 0.85rem; color: var(--text); }
+tbody td.year-cell { color: var(--muted); font-size: 0.68rem; }
+tbody td.contrib-exact { color: var(--muted); font-size: 0.75rem; }
+tbody td.contrib-used  { text-align: right; font-size: 0.82rem; font-weight: 500; }
+.rounded-same { color: var(--text); }
+.rounded-up   { color: var(--accent2); }
+.badge-rounded {
+  display: inline-block; background: rgba(96,212,240,0.12); color: var(--accent2);
+  font-size: 0.6rem; border-radius: 2px; padding: 1px 5px;
+  letter-spacing: 0.04em; vertical-align: middle; margin-left: 4px;
+}
+
+/* ── DISCLAIMER ── */
+.disclaimer {
+  color: var(--muted); font-size: 0.65rem;
+  text-align: center; margin-top: 1.5rem;
+  line-height: 1.8; opacity: 0.7;
+}
+</style>
+</head>
+<body>
+<div class="page-wrap">
+
+  <div class="page-header">
+    <div class="live-badge">
+      <div class="live-dot"></div>
+      <span class="live-text">Investiční kalkulačka</span>
+    </div>
+    <h1>Nech peníze<br>pracovat za tebe.</h1>
+    <p class="subtitle">Složené úroky · Inflace · Plán příspěvků</p>
+  </div>
+
+  <div class="grid">
+
+    <!-- LEFT – sliders -->
+    <div class="card" style="padding-top: 2rem;">
+      <div class="card-title">Parametry investice</div>
+      <div id="sliders"></div>
+      <div class="invested-box">
+        <div class="invested-label">Celkem vloženo</div>
+        <div class="invested-value" id="totalInvested">—</div>
+      </div>
+    </div>
+
+    <!-- RIGHT -->
+    <div class="right">
+
+      <!-- Stat tiles -->
+      <div class="stats-grid" id="stats"></div>
+
+      <!-- Line chart -->
+      <div class="card">
+        <div class="card-title">Vývoj portfolia v čase</div>
+        <div class="chart-wrap"><canvas id="chart"></canvas></div>
+        <div class="chart-legend">
+          <div class="legend-item"><div class="legend-line" style="background:var(--accent)"></div><span class="legend-text">Hodnota portfolia</span></div>
+          <div class="legend-item"><div class="legend-line" style="background:var(--accent2);opacity:.8;border-top:2px dashed var(--accent2);height:0"></div><span class="legend-text">Vloženo celkem</span></div>
+          <div class="legend-item"><div class="legend-line" style="background:var(--accent4);opacity:.7"></div><span class="legend-text">Po inflaci</span></div>
+        </div>
+      </div>
+
+      <!-- Milestones -->
+      <div class="card">
+        <div class="card-title">Milníky</div>
+        <div class="milestones-grid" id="milestones"></div>
+      </div>
+
+      <!-- Contribution table -->
+      <div class="card">
+        <div class="table-controls">
+          <div class="card-title" style="margin-bottom:0">Plán měsíčních příspěvků</div>
+          <div class="toggle-group-col">
+            <label class="round-toggle" id="roundToggle100">
+              <input type="checkbox" id="roundCheckbox100">
+              <div class="toggle-box"><span class="toggle-check">✓</span></div>
+              <span class="toggle-label">Zaokrouhlit na stokoruny nahoru</span>
+            </label>
+            <label class="round-toggle" id="roundToggle1000">
+              <input type="checkbox" id="roundCheckbox1000">
+              <div class="toggle-box"><span class="toggle-check">✓</span></div>
+              <span class="toggle-label">Zaokrouhlit na tisíce nahoru</span>
+            </label>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Rok</th>
+                <th>Příspěvek (přesný)</th>
+                <th style="text-align:right">Příspěvek (použitý)</th>
+              </tr>
+            </thead>
+            <tbody id="contribTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="disclaimer">
+    Kalkulačka slouží pouze pro ilustrační účely. Minulé výnosy nezaručují výnosy budoucí.<br>
+    Skutečné výsledky se mohou lišit v závislosti na daních, poplatcích a tržních podmínkách.
+  </div>
+
+</div>
+
+<script>
+// ── State ──
+const state = {
+  initialAmount:        100000,
+  monthlyContribution:  5000,
+  contributionIncrease: 2.5,
+  annualReturn:         7,
+  years:                20,
+  inflation:            2.5,
+  roundTo100:           false,
+  roundTo1000:          false,
+};
+
+const SLIDERS = [
+  { key: "initialAmount",        label: "Počáteční vklad",            min: 0, max: 10000000, step: 50000, suffix: " Kč",  hint: "0 – 10 000 000 Kč" },
+  { key: "monthlyContribution",  label: "Měsíční příspěvek (1. rok)", min: 0, max: 50000,   step: 500,   suffix: " Kč",  hint: "0 – 50 000 Kč / měsíc" },
+  { key: "contributionIncrease", label: "Roční navýšení příspěvku",   min: 0, max: 20,      step: 0.5,   suffix: " %",   hint: "navýšení vždy k 1. 1. nového roku", highlight: true },
+  { key: "annualReturn",         label: "Roční výnos",                min: 0, max: 20,      step: 0.5,   suffix: " %",   hint: "historický průměr akcií ~7–10 %" },
+  { key: "years",                label: "Horizont investice",         min: 1, max: 40,      step: 1,     suffix: " let", hint: "čím déle, tím silnější složené úroky" },
+  { key: "inflation",            label: "Inflace",                    min: 0, max: 10,      step: 0.5,   suffix: " %",   hint: "dlouhodobý průměr ČR ~2–3 %" },
+];
+
+// ── Helpers ──
+const fmtCZK = n =>
+  new Intl.NumberFormat("cs-CZ", { style:"currency", currency:"CZK", maximumFractionDigits:0 }).format(n);
+
+const fmtShort = n => {
+  if (Math.abs(n) >= 1_000_000) return `${(n/1_000_000).toFixed(1).replace(".",",")} M Kč`;
+  if (Math.abs(n) >= 1_000)     return `${(n/1_000).toFixed(0)} tis. Kč`;
+  return `${Math.round(n)} Kč`;
+};
+
+const fmtDisplay = (val, suffix) =>
+  suffix === " Kč" && val >= 1000 ? val.toLocaleString("cs-CZ") : String(val);
+
+const roundUp100  = n => Math.ceil(n / 100) * 100;
+const roundUp1000 = n => Math.ceil(n / 1000) * 1000;
+
+function getContrib(y) {
+  const exact = state.monthlyContribution * Math.pow(1 + state.contributionIncrease / 100, y - 1);
+  let used = exact;
+  if (state.roundTo1000)     used = roundUp1000(exact);
+  else if (state.roundTo100) used = roundUp100(exact);
+  return { exact, used };
+}
+
+// ── Calculation ──
+function calcData() {
+  const { initialAmount, annualReturn, years, inflation } = state;
+  const monthlyRate = annualReturn / 100 / 12;
+
+  let portfolio = initialAmount;
+  let invested  = initialAmount;
+
+  const pts = [{
+    year: 0, value: Math.round(portfolio),
+    invested: Math.round(invested), realValue: Math.round(portfolio),
+    monthlyNow: getContrib(1).used,
+  }];
+
+  for (let y = 1; y <= years; y++) {
+    const contrib = getContrib(y).used;
+    for (let m = 0; m < 12; m++) {
+      portfolio = portfolio * (1 + monthlyRate) + contrib;
+      invested += contrib;
+    }
+    const inflFactor = Math.pow(1 + inflation / 100, y);
+    pts.push({
+      year: y,
+      value: Math.round(portfolio),
+      invested: Math.round(invested),
+      realValue: Math.round(portfolio / inflFactor),
+      monthlyNow: Math.round(contrib),
+    });
+  }
+  return pts;
+}
+
+// ── Chart ──
+let chart;
+
+function updateTrack(range) {
+  const pct = ((range.value - range.min) / (range.max - range.min)) * 100;
+  range.style.background =
+    `linear-gradient(to right, #c8f060 0%, #c8f060 ${pct}%, #2a2a30 ${pct}%, #2a2a30 100%)`;
+}
+
+function initChart() {
+  const ctx = document.getElementById("chart").getContext("2d");
+
+  const gradGreen = ctx.createLinearGradient(0, 0, 0, 250);
+  gradGreen.addColorStop(0, "rgba(200,240,96,0.2)");
+  gradGreen.addColorStop(1, "rgba(200,240,96,0)");
+
+  const gradBlue = ctx.createLinearGradient(0, 0, 0, 250);
+  gradBlue.addColorStop(0, "rgba(96,212,240,0.1)");
+  gradBlue.addColorStop(1, "rgba(96,212,240,0)");
+
+  chart = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: [],
+      datasets: [
+        { label:"Hodnota portfolia", data:[], borderColor:"#c8f060", backgroundColor:gradGreen,             fill:true, tension:0.4, borderWidth:2,   pointRadius:0, pointHoverRadius:5, pointHoverBackgroundColor:"#c8f060", pointHoverBorderColor:"#0e0e10", pointHoverBorderWidth:2 },
+        { label:"Vloženo celkem",    data:[], borderColor:"#60d4f0", backgroundColor:gradBlue,              fill:true, tension:0.4, borderWidth:1.8, pointRadius:0, pointHoverRadius:4, borderDash:[5,4] },
+        { label:"Po inflaci",        data:[], borderColor:"#b89cf0", backgroundColor:"rgba(184,156,240,0)", fill:true, tension:0.4, borderWidth:1.4, pointRadius:0, borderDash:[2,4] },
+      ]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      animation:{ duration:300 },
+      interaction:{ mode:"index", intersect:false },
+      plugins: {
+        legend: { display:false },
+        tooltip: {
+          backgroundColor:"#17171a", borderColor:"#2a2a30", borderWidth:1,
+          titleColor:"#6a6a78", bodyColor:"#e8e8ec",
+          titleFont:{ family:"DM Mono", size:11 }, bodyFont:{ family:"DM Mono", size:12 },
+          callbacks: {
+            title: items => `Rok ${items[0].label}`,
+            label: item => ` ${item.dataset.label}: ${fmtShort(item.raw)}`,
+          }
+        }
+      },
+      scales: {
+        x: { grid:{ color:"rgba(255,255,255,0.035)" }, ticks:{ color:"#6a6a78", font:{ family:"DM Mono", size:10 }, callback: v => `${v}r` }, border:{ color:"#2a2a30" } },
+        y: { grid:{ color:"rgba(255,255,255,0.035)" }, ticks:{ color:"#6a6a78", font:{ family:"DM Mono", size:10 }, callback: fmtShort }, border:{ color:"#2a2a30" } },
+      }
+    }
+  });
+}
+
+// ── Contribution table ──
+function renderContribTable() {
+  const currentYear = new Date().getFullYear();
+  const tbody = document.getElementById("contribTableBody");
+  let html = "";
+
+  for (let y = 1; y <= state.years; y++) {
+    const { exact, used } = getContrib(y);
+    const isFirst   = y === 1;
+    const isRounded = (state.roundTo100 || state.roundTo1000) && Math.round(used) !== Math.round(exact);
+    const badge     = isRounded ? `<span class="badge-rounded">zaokr.</span>` : "";
+    const usedClass = isRounded ? "rounded-up" : "rounded-same";
+
+    html += `
+      <tr class="${isFirst ? "first-row" : ""}">
+        <td class="year-cell">${currentYear + y - 1}${isFirst ? `<span style="color:var(--accent);font-size:0.6rem;margin-left:5px">(1. rok)</span>` : ""}</td>
+        <td class="contrib-exact">${fmtCZK(Math.round(exact))}</td>
+        <td class="contrib-used"><span class="${usedClass}">${fmtCZK(Math.round(used))}</span>${badge}</td>
+      </tr>`;
+  }
+  tbody.innerHTML = html;
+}
+
+// ── Render ──
+function render() {
+  const data  = calcData();
+  const final = data[data.length - 1];
+  const profit    = final.value - final.invested;
+  const profitPct = final.invested > 0 ? ((profit / final.invested) * 100).toFixed(0) : 0;
+
+  document.getElementById("totalInvested").textContent = fmtCZK(final.invested);
+
+  document.getElementById("stats").innerHTML = `
+    <div class="stat-tile s-green">
+      <div class="stat-label">Konečná hodnota</div>
+      <div class="stat-value c-green">${fmtShort(final.value)}</div>
+      <div class="stat-sub">za ${state.years} let</div>
+    </div>
+    <div class="stat-tile s-orange">
+      <div class="stat-label">Zisk</div>
+      <div class="stat-value c-orange">${fmtShort(profit)}</div>
+      <div class="stat-sub">+${profitPct} % z vložených</div>
+    </div>
+    <div class="stat-tile s-purple">
+      <div class="stat-label">Reálná hodnota</div>
+      <div class="stat-value c-purple">${fmtShort(final.realValue)}</div>
+      <div class="stat-sub">po inflaci ${state.inflation} %</div>
+    </div>
+    <div class="stat-tile s-blue">
+      <div class="stat-label">Příspěvek – posl. rok</div>
+      <div class="stat-value c-blue">${fmtShort(final.monthlyNow)}</div>
+      <div class="stat-sub">za měsíc v roce ${state.years}</div>
+    </div>
+  `;
+
+  chart.data.labels             = data.map(d => d.year);
+  chart.data.datasets[0].data   = data.map(d => d.value);
+  chart.data.datasets[1].data   = data.map(d => d.invested);
+  chart.data.datasets[2].data   = data.map(d => d.realValue);
+  chart.update();
+
+  const milestoneYears = [5, 10, 15, 20, 25, 30].filter(y => y <= state.years);
+  document.getElementById("milestones").innerHTML =
+    milestoneYears.map(y => {
+      const d = data[y];
+      const ret = d.invested > 0 ? ((d.value - d.invested) / d.invested * 100).toFixed(1) : 0;
+      return `
+        <div class="milestone">
+          <div class="milestone-year">Za ${y} let</div>
+          <div class="milestone-value">${fmtShort(d.value)}</div>
+          <div class="milestone-inv">vloženo: ${fmtShort(d.invested)}</div>
+          <div class="milestone-return">zhodnocení: +${ret} %</div>
+        </div>`;
+    }).join("") || `<div style="color:var(--muted);font-size:.75rem">Horizont musí být alespoň 5 let.</div>`;
+
+  renderContribTable();
+  document.querySelectorAll("input[type=range]").forEach(updateTrack);
+}
+
+// ── Build sliders ──
+function buildSliders() {
+  const container = document.getElementById("sliders");
+  SLIDERS.forEach(({ key, label, min, max, step, suffix, hint, highlight }) => {
+    const id  = `sl_${key}`;
+    const div = document.createElement("div");
+    div.className = "slider-block" + (highlight ? " highlight" : "");
+    div.innerHTML = `
+      <div class="slider-header">
+        <label class="slider-label" for="${id}">${label}</label>
+        <div class="slider-value-wrap">
+          <input class="slider-input" id="inp_${key}" type="text" inputmode="decimal"
+            value="${fmtDisplay(state[key], suffix)}" autocomplete="off">
+          <span class="slider-suffix">${suffix}</span>
+        </div>
+      </div>
+      <input type="range" id="${id}" min="${min}" max="${max}" step="${step}" value="${state[key]}">
+      <div class="slider-hint">${hint}</div>
+    `;
+    container.appendChild(div);
+
+    const range = div.querySelector(`#${id}`);
+    const input = div.querySelector(`#inp_${key}`);
+
+    range.addEventListener("input", () => {
+      state[key] = Number(range.value);
+      input.value = fmtDisplay(state[key], suffix);
+      render();
+    });
+    input.addEventListener("focus", () => { input.value = String(state[key]); input.select(); });
+    input.addEventListener("input", () => {
+      const n = parseFloat(input.value.replace(",", ".").replace(/\s/g, ""));
+      if (!isNaN(n)) { const c = Math.min(max, Math.max(min, n)); state[key] = c; range.value = c; render(); }
+    });
+    input.addEventListener("blur", () => {
+      const n = parseFloat(input.value.replace(",", ".").replace(/\s/g, ""));
+      const c = isNaN(n) ? state[key] : Math.min(max, Math.max(min, n));
+      state[key] = c; range.value = c;
+      input.value = fmtDisplay(c, suffix);
+      render();
+    });
+    input.addEventListener("keydown", e => { if (e.key === "Enter") input.blur(); });
+    updateTrack(range);
+  });
+}
+
+// ── Round toggles ──
+function initRoundToggle() {
+  const toggle100   = document.getElementById("roundToggle100");
+  const checkbox100 = document.getElementById("roundCheckbox100");
+  const toggle1000   = document.getElementById("roundToggle1000");
+  const checkbox1000 = document.getElementById("roundCheckbox1000");
+
+  checkbox100.addEventListener("change", () => {
+    state.roundTo100 = checkbox100.checked;
+    if (state.roundTo100) { state.roundTo1000 = false; checkbox1000.checked = false; toggle1000.classList.remove("active"); }
+    toggle100.classList.toggle("active", state.roundTo100);
+    render();
+  });
+
+  checkbox1000.addEventListener("change", () => {
+    state.roundTo1000 = checkbox1000.checked;
+    if (state.roundTo1000) { state.roundTo100 = false; checkbox100.checked = false; toggle100.classList.remove("active"); }
+    toggle1000.classList.toggle("active", state.roundTo1000);
+    render();
+  });
+}
+
+// ── Init ──
+buildSliders();
+initChart();
+initRoundToggle();
+render();
+</script>
+</body>
+</html>

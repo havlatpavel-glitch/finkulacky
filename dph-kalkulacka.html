@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kalkulačka DPH</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:       #0e0e10;
+  --surface:  #17171a;
+  --surface2: #1e1e22;
+  --border:   #2a2a30;
+  --accent:   #c8f060;
+  --accent2:  #60d4f0;
+  --accent3:  #f0a060;
+  --text:     #e8e8ec;
+  --muted:    #6a6a78;
+  --error:    #f06060;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Mono', monospace;
+  min-height: 100vh;
+  padding: 2rem;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  background-image:
+    radial-gradient(ellipse 55% 40% at 15% 15%, rgba(200,240,96,0.06) 0%, transparent 60%),
+    radial-gradient(ellipse 45% 50% at 85% 85%, rgba(240,160,96,0.05) 0%, transparent 60%);
+}
+
+.page-wrap { width: 100%; max-width: 680px; }
+
+/* HEADER */
+.page-header { margin-bottom: 2rem; }
+
+.back-link {
+  display: inline-flex; align-items: center; gap: 0.45rem;
+  font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--muted); text-decoration: none;
+  margin-bottom: 1.25rem;
+  transition: color 0.2s;
+}
+.back-link:hover { color: var(--accent); }
+
+h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.9rem; font-weight: 700; letter-spacing: -0.02em;
+  margin-bottom: 0.3rem;
+  background: linear-gradient(135deg, var(--text) 60%, var(--muted));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+
+.subtitle {
+  font-size: 0.72rem; color: var(--muted);
+  letter-spacing: 0.08em; text-transform: uppercase;
+}
+
+/* CARD */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 2rem;
+  margin-bottom: 1.25rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+}
+
+.card-title {
+  font-size: 0.66rem; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--muted);
+  margin-bottom: 1.25rem;
+}
+
+/* RATE SELECTOR */
+.rate-row {
+  display: flex; align-items: center; gap: 0.75rem;
+  flex-wrap: wrap; margin-bottom: 0.75rem;
+}
+
+.rate-btn {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-family: 'DM Mono', monospace;
+  font-size: 0.78rem; letter-spacing: 0.04em;
+  padding: 0.45rem 0.9rem;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.rate-btn:hover { border-color: var(--accent); color: var(--text); }
+.rate-btn.active {
+  background: var(--accent); border-color: var(--accent);
+  color: var(--bg); font-weight: 500;
+}
+
+.custom-rate-wrap {
+  display: flex; align-items: center; gap: 0.4rem;
+}
+.custom-rate-wrap input {
+  width: 72px;
+  background: var(--bg); border: 1px solid var(--border);
+  color: var(--text); font-family: 'DM Mono', monospace;
+  font-size: 0.85rem; padding: 0.45rem 0.6rem;
+  border-radius: 3px; outline: none;
+  transition: border-color 0.2s;
+  -moz-appearance: textfield;
+}
+.custom-rate-wrap input::-webkit-inner-spin-button,
+.custom-rate-wrap input::-webkit-outer-spin-button { -webkit-appearance: none; }
+.custom-rate-wrap input:focus { border-color: var(--accent); }
+.custom-rate-wrap span { color: var(--muted); font-size: 0.78rem; }
+
+/* MAIN INPUTS */
+.calc-grid {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 1rem;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+@media (max-width: 520px) {
+  .calc-grid { grid-template-columns: 1fr; }
+  .swap-col { transform: rotate(90deg); }
+}
+
+.field { display: flex; flex-direction: column; gap: 0.4rem; }
+
+label {
+  font-size: 0.64rem; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--muted);
+  display: flex; align-items: center; gap: 0.5rem;
+}
+
+.badge {
+  font-size: 0.58rem; padding: 0.1rem 0.45rem; border-radius: 2px;
+  letter-spacing: 0.06em;
+}
+.badge-green {
+  background: rgba(200,240,96,0.12); color: var(--accent);
+  border: 1px solid rgba(200,240,96,0.25);
+}
+.badge-blue {
+  background: rgba(96,212,240,0.1); color: var(--accent2);
+  border: 1px solid rgba(96,212,240,0.2);
+}
+
+.input-wrap { position: relative; }
+
+.input-wrap input {
+  width: 100%;
+  background: var(--bg); border: 1px solid var(--border);
+  color: var(--text); font-family: 'DM Mono', monospace;
+  font-size: 1.25rem; font-weight: 500;
+  padding: 0.75rem 3.2rem 0.75rem 0.9rem;
+  border-radius: 3px; outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  -moz-appearance: textfield;
+}
+.input-wrap input::-webkit-inner-spin-button,
+.input-wrap input::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+.input-wrap input.green:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(200,240,96,0.08);
+}
+.input-wrap input.blue:focus {
+  border-color: var(--accent2);
+  box-shadow: 0 0 0 3px rgba(96,212,240,0.08);
+}
+
+.input-unit {
+  position: absolute; right: 0.85rem; top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.72rem; color: var(--muted); pointer-events: none;
+}
+
+/* SWAP BUTTON */
+.swap-col { display: flex; justify-content: center; }
+.swap-icon {
+  width: 36px; height: 36px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-size: 1rem; color: var(--muted);
+  cursor: default;
+}
+
+/* RESULTS */
+.results-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.85rem;
+}
+
+@media (max-width: 520px) { .results-grid { grid-template-columns: 1fr 1fr; } }
+
+.result-tile {
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 3px; padding: 0.9rem;
+}
+
+.result-tile.t-green { border-left: 3px solid var(--accent); }
+.result-tile.t-blue  { border-left: 3px solid var(--accent2); }
+.result-tile.t-orange{ border-left: 3px solid var(--accent3); }
+.result-tile.t-muted { border-left: 3px solid var(--border); }
+
+.r-label {
+  font-size: 0.6rem; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 0.35rem;
+}
+.r-value {
+  font-size: 1rem; font-weight: 500; letter-spacing: -0.01em;
+  color: var(--text); transition: color 0.2s;
+}
+.r-value.green  { color: var(--accent); }
+.r-value.blue   { color: var(--accent2); }
+.r-value.orange { color: var(--accent3); }
+
+/* BATCH SECTION */
+.batch-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 0.75rem;
+  align-items: end;
+  margin-bottom: 1rem;
+}
+
+@media (max-width: 520px) {
+  .batch-grid { grid-template-columns: 1fr 1fr; }
+  .batch-grid .add-btn { grid-column: 1 / -1; }
+}
+
+.add-btn {
+  background: rgba(200,240,96,0.08); border: 1px solid rgba(200,240,96,0.25);
+  color: var(--accent); font-family: 'DM Mono', monospace;
+  font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase;
+  padding: 0.65rem 1rem; border-radius: 3px; cursor: pointer;
+  transition: all 0.15s; white-space: nowrap;
+}
+.add-btn:hover { background: rgba(200,240,96,0.15); }
+
+.batch-table-wrap {
+  border: 1px solid var(--border); border-radius: 3px; overflow: hidden;
+  max-height: 280px; overflow-y: auto;
+}
+.batch-table-wrap::-webkit-scrollbar { width: 5px; }
+.batch-table-wrap::-webkit-scrollbar-track { background: var(--bg); }
+.batch-table-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+table { width: 100%; border-collapse: collapse; font-size: 0.75rem; }
+
+thead th {
+  background: var(--surface2); color: var(--muted);
+  font-size: 0.6rem; letter-spacing: 0.1em; text-transform: uppercase;
+  padding: 0.6rem 0.8rem; text-align: right;
+  position: sticky; top: 0; z-index: 1;
+  border-bottom: 1px solid var(--border);
+}
+thead th:first-child { text-align: left; }
+
+tbody tr { border-bottom: 1px solid rgba(255,255,255,0.04); transition: background 0.1s; }
+tbody tr:hover { background: rgba(255,255,255,0.025); }
+tbody td { padding: 0.5rem 0.8rem; text-align: right; color: var(--text); }
+tbody td:first-child { text-align: left; color: var(--muted); font-size: 0.7rem; }
+tbody td.green { color: var(--accent); }
+tbody td.blue  { color: var(--accent2); }
+tbody td.orange{ color: var(--accent3); }
+
+.del-btn {
+  background: transparent; border: none;
+  color: var(--muted); cursor: pointer;
+  font-size: 0.85rem; padding: 0.1rem 0.3rem;
+  border-radius: 2px; transition: color 0.15s;
+  line-height: 1;
+}
+.del-btn:hover { color: var(--error); }
+
+.batch-footer {
+  display: flex; justify-content: flex-end; gap: 1.5rem;
+  padding: 0.65rem 0.8rem;
+  background: var(--surface2); border-top: 1px solid var(--border);
+  font-size: 0.7rem; flex-wrap: wrap; gap: 1rem;
+}
+.batch-footer span { color: var(--muted); }
+.batch-footer strong { color: var(--text); }
+
+.empty-batch {
+  padding: 1.5rem; text-align: center;
+  font-size: 0.72rem; color: var(--muted); letter-spacing: 0.06em;
+}
+
+/* RESET */
+.reset-btn {
+  width: 100%; margin-top: 1.25rem;
+  background: transparent; border: 1px solid var(--border);
+  color: var(--muted); font-family: 'DM Mono', monospace;
+  font-size: 0.68rem; letter-spacing: 0.12em; text-transform: uppercase;
+  padding: 0.6rem; border-radius: 3px; cursor: pointer;
+  transition: all 0.15s;
+}
+.reset-btn:hover { border-color: var(--muted); color: var(--text); }
+
+/* STATUS */
+.status-bar {
+  display: flex; align-items: center; gap: 0.5rem;
+  margin-top: 1.25rem; font-size: 0.65rem; color: var(--muted); letter-spacing: 0.06em;
+}
+.dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: pulse 2s infinite; flex-shrink: 0; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+</style>
+</head>
+<body>
+<div class="page-wrap">
+
+  <div class="page-header">
+    <a class="back-link" href="index.html">← Zpět na rozcestník</a>
+    <h1>Kalkulačka DPH</h1>
+    <p class="subtitle">Výpočet ceny bez / s daní · Hromadný výpočet</p>
+  </div>
+
+  <!-- MAIN CALCULATOR -->
+  <div class="card">
+    <div class="card-title">Sazba DPH</div>
+
+    <div class="rate-row">
+      <button class="rate-btn" data-rate="10">10 %</button>
+      <button class="rate-btn active" data-rate="12">12 %</button>
+      <button class="rate-btn" data-rate="21">21 %</button>
+      <div class="custom-rate-wrap">
+        <input type="number" id="customRate" min="0" max="100" step="0.1" placeholder="vlastní">
+        <span>%</span>
+      </div>
+    </div>
+
+    <div class="card-title" style="margin-top:1.5rem">Výpočet</div>
+
+    <div class="calc-grid">
+      <div class="field">
+        <label>Cena bez DPH <span class="badge badge-green">základ</span></label>
+        <div class="input-wrap">
+          <input type="number" id="exVat" class="green" placeholder="0,00" step="0.01">
+          <span class="input-unit">Kč</span>
+        </div>
+      </div>
+
+      <div class="swap-col">
+        <div class="swap-icon">⇄</div>
+      </div>
+
+      <div class="field">
+        <label>Cena s DPH <span class="badge badge-blue">brutto</span></label>
+        <div class="input-wrap">
+          <input type="number" id="incVat" class="blue" placeholder="0,00" step="0.01">
+          <span class="input-unit">Kč</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="results-grid">
+      <div class="result-tile t-green">
+        <div class="r-label">Základ (bez DPH)</div>
+        <div class="r-value green" id="resEx">—</div>
+      </div>
+      <div class="result-tile t-blue">
+        <div class="r-label">Cena s DPH</div>
+        <div class="r-value blue" id="resInc">—</div>
+      </div>
+      <div class="result-tile t-orange">
+        <div class="r-label">Částka DPH</div>
+        <div class="r-value orange" id="resVat">—</div>
+      </div>
+      <div class="result-tile t-muted">
+        <div class="r-label">Sazba DPH</div>
+        <div class="r-value" id="resRate">12 %</div>
+      </div>
+    </div>
+
+    <button class="reset-btn" id="resetBtn">↺ Vymazat</button>
+
+    <div class="status-bar">
+      <div class="dot"></div>
+      <span id="statusText">Zadejte cenu pro výpočet</span>
+    </div>
+  </div>
+
+  <!-- BATCH CALCULATOR -->
+  <div class="card">
+    <div class="card-title">Hromadný výpočet</div>
+
+    <div class="batch-grid">
+      <div class="field">
+        <label>Popis položky</label>
+        <div class="input-wrap">
+          <input type="text" id="batchDesc" placeholder="např. Faktura #001" style="font-size:.9rem;padding:.65rem .9rem">
+        </div>
+      </div>
+      <div class="field">
+        <label>Cena bez DPH</label>
+        <div class="input-wrap">
+          <input type="number" id="batchAmount" class="green" placeholder="0,00" step="0.01">
+          <span class="input-unit">Kč</span>
+        </div>
+      </div>
+      <button class="add-btn" id="addBtn">+ Přidat</button>
+    </div>
+
+    <div class="batch-table-wrap" id="batchTableWrap">
+      <div class="empty-batch" id="emptyBatch">Zatím žádné položky · přidejte první řádek</div>
+      <table id="batchTable" style="display:none">
+        <thead>
+          <tr>
+            <th>Popis</th>
+            <th>Základ</th>
+            <th>DPH (<span id="batchRateLabel">12</span> %)</th>
+            <th>S DPH</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="batchBody"></tbody>
+      </table>
+      <div class="batch-footer" id="batchFooter" style="display:none">
+        <span>Základ: <strong id="footerEx">—</strong></span>
+        <span>DPH: <strong id="footerVat">—</strong></span>
+        <span>Celkem s DPH: <strong id="footerInc">—</strong></span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+let vatRate = 12;
+let lastEdited = null;
+let batchItems = [];
+
+// ── Rate buttons ──
+document.querySelectorAll('.rate-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.rate-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    vatRate = parseFloat(btn.dataset.rate);
+    document.getElementById('customRate').value = '';
+    updateRateLabel();
+    recalc();
+    renderBatch();
+  });
+});
+
+document.getElementById('customRate').addEventListener('input', function() {
+  const val = parseFloat(this.value);
+  if (!isNaN(val) && val >= 0 && val <= 100) {
+    document.querySelectorAll('.rate-btn').forEach(b => b.classList.remove('active'));
+    vatRate = val;
+    updateRateLabel();
+    recalc();
+    renderBatch();
+  }
+});
+
+function updateRateLabel() {
+  document.getElementById('resRate').textContent = vatRate + ' %';
+  document.getElementById('batchRateLabel').textContent = vatRate;
+}
+
+// ── Main calculator ──
+const exInput  = document.getElementById('exVat');
+const incInput = document.getElementById('incVat');
+
+exInput.addEventListener('input', () => { lastEdited = 'ex'; calcFromEx(); });
+incInput.addEventListener('input', () => { lastEdited = 'inc'; calcFromInc(); });
+
+function calcFromEx() {
+  const ex = parseFloat(exInput.value);
+  if (!isNaN(ex) && ex >= 0) {
+    const inc = ex * (1 + vatRate / 100);
+    incInput.value = inc.toFixed(2);
+    showResults(ex, inc);
+  } else { clearResults(); }
+}
+
+function calcFromInc() {
+  const inc = parseFloat(incInput.value);
+  if (!isNaN(inc) && inc >= 0) {
+    const ex = inc / (1 + vatRate / 100);
+    exInput.value = ex.toFixed(2);
+    showResults(ex, inc);
+  } else { clearResults(); }
+}
+
+function recalc() {
+  if (lastEdited === 'ex') calcFromEx();
+  else if (lastEdited === 'inc') calcFromInc();
+}
+
+function showResults(ex, inc) {
+  const vat = inc - ex;
+  document.getElementById('resEx').textContent  = fmt(ex) + ' Kč';
+  document.getElementById('resInc').textContent = fmt(inc) + ' Kč';
+  document.getElementById('resVat').textContent = fmt(vat) + ' Kč';
+  document.getElementById('statusText').textContent =
+    `DPH ${vatRate} % · základ ${fmt(ex)} Kč · daň ${fmt(vat)} Kč`;
+}
+
+function clearResults() {
+  ['resEx','resInc','resVat'].forEach(id => document.getElementById(id).textContent = '—');
+  document.getElementById('statusText').textContent = 'Zadejte cenu pro výpočet';
+}
+
+document.getElementById('resetBtn').addEventListener('click', () => {
+  exInput.value = ''; incInput.value = '';
+  lastEdited = null; clearResults();
+});
+
+// ── Batch calculator ──
+document.getElementById('addBtn').addEventListener('click', addItem);
+document.getElementById('batchAmount').addEventListener('keydown', e => {
+  if (e.key === 'Enter') addItem();
+});
+
+function addItem() {
+  const desc   = document.getElementById('batchDesc').value.trim() || `Položka ${batchItems.length + 1}`;
+  const amount = parseFloat(document.getElementById('batchAmount').value);
+  if (isNaN(amount) || amount <= 0) return;
+
+  batchItems.push({ desc, ex: amount, rate: vatRate });
+  document.getElementById('batchDesc').value   = '';
+  document.getElementById('batchAmount').value = '';
+  document.getElementById('batchDesc').focus();
+  renderBatch();
+}
+
+function deleteItem(idx) {
+  batchItems.splice(idx, 1);
+  renderBatch();
+}
+
+function renderBatch() {
+  const tbody  = document.getElementById('batchBody');
+  const table  = document.getElementById('batchTable');
+  const empty  = document.getElementById('emptyBatch');
+  const footer = document.getElementById('batchFooter');
+
+  if (batchItems.length === 0) {
+    table.style.display  = 'none';
+    footer.style.display = 'none';
+    empty.style.display  = 'block';
+    return;
+  }
+
+  empty.style.display  = 'none';
+  table.style.display  = 'table';
+  footer.style.display = 'flex';
+
+  let totalEx = 0, totalVat = 0, totalInc = 0;
+
+  tbody.innerHTML = batchItems.map((item, i) => {
+    const inc = item.ex * (1 + item.rate / 100);
+    const vat = inc - item.ex;
+    totalEx  += item.ex;
+    totalVat += vat;
+    totalInc += inc;
+    return `
+      <tr>
+        <td>${escHtml(item.desc)} <span style="color:var(--muted);font-size:.65rem">(${item.rate} %)</span></td>
+        <td class="green">${fmt(item.ex)} Kč</td>
+        <td class="orange">${fmt(vat)} Kč</td>
+        <td class="blue">${fmt(inc)} Kč</td>
+        <td><button class="del-btn" onclick="deleteItem(${i})">✕</button></td>
+      </tr>`;
+  }).join('');
+
+  document.getElementById('footerEx').textContent  = fmt(totalEx)  + ' Kč';
+  document.getElementById('footerVat').textContent = fmt(totalVat) + ' Kč';
+  document.getElementById('footerInc').textContent = fmt(totalInc) + ' Kč';
+}
+
+// ── Helpers ──
+function fmt(n) {
+  return n.toLocaleString('cs-CZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+</script>
+</body>
+</html>

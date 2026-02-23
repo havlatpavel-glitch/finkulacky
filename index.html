@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Finanční kalkulačky</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+/* ── DARK (výchozí) ── */
+:root {
+  --bg:       #0e0e10;
+  --surface:  #17171a;
+  --surface2: #1e1e22;
+  --border:   #2a2a30;
+  --accent:   #c8f060;
+  --accent2:  #60d4f0;
+  --accent3:  #f0a060;
+  --accent4:  #b89cf0;
+  --text:     #e8e8ec;
+  --muted:    #6a6a78;
+  --shadow:   rgba(0,0,0,0.45);
+  --glow-op:  0.07;
+  --chip-bg:  rgba(255,255,255,0.05);
+  --noise-op: 0.4;
+}
+
+/* ── LIGHT ── */
+:root.light {
+  --bg:       #f2f2ed;
+  --surface:  #ffffff;
+  --surface2: #f7f7f3;
+  --border:   #deded6;
+  --accent:   #527a00;
+  --accent2:  #006e96;
+  --accent3:  #a04c00;
+  --accent4:  #5c32b0;
+  --text:     #18181c;
+  --muted:    #808088;
+  --shadow:   rgba(0,0,0,0.1);
+  --glow-op:  0;
+  --chip-bg:  rgba(0,0,0,0.04);
+  --noise-op: 0;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Mono', monospace;
+  min-height: 100vh;
+  overflow-x: hidden;
+  transition: background 0.35s, color 0.35s;
+}
+
+/* ── NOISE ── */
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  opacity: var(--noise-op);
+  transition: opacity 0.35s;
+}
+
+/* ── AMBIENT GLOW ── */
+.glow-1, .glow-2, .glow-3 {
+  position: fixed; border-radius: 50%; pointer-events: none; z-index: 0;
+  filter: blur(120px); opacity: var(--glow-op);
+  transition: opacity 0.35s;
+}
+.glow-1 { width: 600px; height: 600px; top: -200px; left: -200px; background: var(--accent); }
+.glow-2 { width: 500px; height: 500px; bottom: -150px; right: -150px; background: var(--accent2); }
+.glow-3 { width: 400px; height: 400px; top: 40%; left: 50%; transform: translateX(-50%); background: var(--accent4); }
+
+/* ── WRAP ── */
+.wrap {
+  position: relative; z-index: 1;
+  max-width: 1000px; margin: 0 auto;
+  padding: 4rem 2rem 6rem;
+}
+
+/* ── HEADER ── */
+header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 5rem; gap: 1rem; flex-wrap: wrap;
+}
+
+.logo {
+  font-size: 0.68rem; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--muted);
+  display: flex; align-items: center; gap: 0.6rem;
+}
+.logo-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--accent); animation: pulse 2s infinite;
+  transition: background 0.35s;
+}
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.25} }
+
+.header-right { display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap; }
+
+nav { display: flex; gap: 1.75rem; }
+nav a {
+  font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--muted); text-decoration: none; transition: color 0.2s;
+}
+nav a:hover { color: var(--text); }
+
+/* ── THEME TOGGLE ── */
+.theme-toggle {
+  display: flex; align-items: center; gap: 0.55rem;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 50px; padding: 0.35rem 0.75rem 0.35rem 0.55rem;
+  cursor: pointer; transition: border-color 0.2s, background 0.35s;
+  user-select: none;
+}
+.theme-toggle:hover { border-color: var(--accent); }
+
+.toggle-track {
+  width: 32px; height: 18px; border-radius: 9px;
+  background: var(--border); position: relative;
+  transition: background 0.3s; flex-shrink: 0;
+}
+:root.light .toggle-track { background: var(--accent); }
+
+.toggle-thumb {
+  position: absolute; top: 2px; left: 2px;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: var(--muted);
+  transition: transform 0.3s, background 0.3s;
+}
+:root.light .toggle-thumb { transform: translateX(14px); background: #fff; }
+
+.toggle-icon { font-size: 0.85rem; line-height: 1; transition: transform 0.4s; }
+.toggle-label {
+  font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--muted); transition: color 0.35s;
+  white-space: nowrap;
+}
+
+/* ── HERO ── */
+.hero { margin-bottom: 5rem; }
+
+.hero-eyebrow {
+  font-size: 0.66rem; letter-spacing: 0.2em; text-transform: uppercase;
+  color: var(--accent); margin-bottom: 1.25rem;
+  display: flex; align-items: center; gap: 0.75rem;
+  transition: color 0.35s;
+}
+.hero-eyebrow::before {
+  content: ''; display: block; width: 32px; height: 1px;
+  background: var(--accent); transition: background 0.35s;
+}
+
+.hero h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(2.4rem, 6vw, 4.2rem);
+  font-weight: 700; line-height: 1.08; letter-spacing: -0.02em;
+  margin-bottom: 1.5rem;
+}
+
+.hero h1 em {
+  font-style: italic; font-weight: 400;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.hero-desc {
+  max-width: 520px;
+  font-size: 0.82rem; color: var(--muted); line-height: 1.9; letter-spacing: 0.02em;
+}
+
+/* ── DIVIDER ── */
+.divider {
+  display: flex; align-items: center; gap: 1rem; margin-bottom: 2.5rem;
+}
+.divider-line { flex: 1; height: 1px; background: var(--border); transition: background 0.35s; }
+.divider-text {
+  font-size: 0.62rem; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--muted);
+}
+
+/* ── CARDS ── */
+.cards {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.25rem;
+}
+@media (max-width: 640px) { .cards { grid-template-columns: 1fr; } }
+
+.calc-card {
+  position: relative; overflow: hidden;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 4px; padding: 2rem;
+  text-decoration: none; color: inherit;
+  display: flex; flex-direction: column;
+  transition: border-color 0.25s, transform 0.25s, box-shadow 0.25s, background 0.35s;
+}
+
+.calc-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: var(--card-accent, var(--accent));
+  transform: scaleX(0); transform-origin: left;
+  transition: transform 0.3s ease;
+}
+
+.calc-card:hover {
+  border-color: var(--card-accent, var(--accent));
+  transform: translateY(-3px);
+  box-shadow: 0 12px 40px var(--shadow);
+}
+.calc-card:hover::before { transform: scaleX(1); }
+
+.calc-card:nth-child(1) { --card-accent: var(--accent); }
+.calc-card:nth-child(2) { --card-accent: var(--accent2); }
+.calc-card:nth-child(3) { --card-accent: var(--accent3); }
+.calc-card:nth-child(4) { --card-accent: var(--accent4); }
+
+.card-icon { font-size: 1.8rem; margin-bottom: 1.25rem; display: block; line-height: 1; }
+.card-tag {
+  font-size: 0.6rem; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--card-accent, var(--accent)); margin-bottom: 0.5rem;
+}
+.card-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.3rem; font-weight: 700; letter-spacing: -0.01em;
+  margin-bottom: 0.6rem; color: var(--text);
+}
+.card-desc {
+  font-size: 0.72rem; color: var(--muted); line-height: 1.8; flex: 1; margin-bottom: 1.5rem;
+}
+.card-features { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 1.5rem; }
+
+.chip {
+  font-size: 0.6rem; letter-spacing: 0.07em;
+  padding: 0.25rem 0.6rem; border-radius: 2px;
+  background: var(--chip-bg); border: 1px solid var(--border);
+  color: var(--muted); white-space: nowrap;
+  transition: background 0.35s, border-color 0.35s;
+}
+
+.card-cta {
+  display: flex; align-items: center; gap: 0.5rem;
+  font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--card-accent, var(--accent)); transition: gap 0.2s;
+}
+.calc-card:hover .card-cta { gap: 0.85rem; }
+.cta-arrow { font-size: 1rem; line-height: 1; }
+
+/* ── STATS BAR ── */
+.stats-bar {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 1px; background: var(--border);
+  border: 1px solid var(--border); border-radius: 4px;
+  margin-top: 3.5rem; overflow: hidden;
+  transition: background 0.35s, border-color 0.35s;
+}
+.stat-item {
+  background: var(--surface); padding: 1.5rem; text-align: center;
+  transition: background 0.35s;
+}
+.stat-num {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.8rem; font-weight: 700; letter-spacing: -0.02em;
+  color: var(--accent); display: block; transition: color 0.35s;
+}
+.stat-desc {
+  font-size: 0.65rem; color: var(--muted);
+  letter-spacing: 0.08em; text-transform: uppercase; margin-top: 0.3rem;
+}
+
+/* ── FOOTER ── */
+footer {
+  position: relative; z-index: 1;
+  border-top: 1px solid var(--border);
+  padding: 1.5rem 2rem;
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 1rem;
+  font-size: 0.62rem; color: var(--muted); letter-spacing: 0.06em;
+  transition: border-color 0.35s;
+}
+footer a { color: var(--muted); text-decoration: none; }
+footer a:hover { color: var(--text); }
+
+/* ── LIGHT MODE — extra tweaks ── */
+:root.light .hero h1 em {
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  -webkit-background-clip: text; background-clip: text;
+}
+:root.light body::after {
+  content: '';
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background:
+    radial-gradient(ellipse 50% 40% at 15% 10%, rgba(82,122,0,0.06) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 50% at 85% 90%, rgba(0,110,150,0.05) 0%, transparent 60%);
+}
+
+/* ── ANIMATIONS ── */
+.fade-up {
+  opacity: 0; transform: translateY(24px);
+  animation: fadeUp 0.6s ease forwards;
+}
+.fade-up:nth-child(1) { animation-delay: 0.05s; }
+.fade-up:nth-child(2) { animation-delay: 0.15s; }
+.fade-up:nth-child(3) { animation-delay: 0.25s; }
+.fade-up:nth-child(4) { animation-delay: 0.35s; }
+
+@keyframes fadeUp { to { opacity: 1; transform: translateY(0); } }
+
+.hero-fade {
+  opacity: 0; transform: translateY(16px);
+  animation: fadeUp 0.7s ease 0.1s forwards;
+}
+
+@media (max-width: 480px) {
+  header { margin-bottom: 3rem; }
+  .hero { margin-bottom: 3rem; }
+  .theme-toggle .toggle-label { display: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="glow-1"></div>
+<div class="glow-2"></div>
+<div class="glow-3"></div>
+
+<div class="wrap">
+
+  <header>
+    <div class="logo">
+      <div class="logo-dot"></div>
+      FinKalkulačky
+    </div>
+    <div class="header-right">
+      <nav>
+        <a href="currency-converter.html">Měny</a>
+        <a href="hypotecni-kalkulacka.html">Hypotéka</a>
+        <a href="investicni-kalkulacka.html">Investice</a>
+      </nav>
+      <button class="theme-toggle" id="themeToggle" title="Přepnout světlý / tmavý režim" aria-label="Přepnout téma">
+        <div class="toggle-track"><div class="toggle-thumb"></div></div>
+        <span class="toggle-icon" id="themeIcon">🌙</span>
+        <span class="toggle-label" id="themeLabel">Tmavý</span>
+      </button>
+    </div>
+  </header>
+
+  <section class="hero hero-fade">
+    <div class="hero-eyebrow">Osobní finance</div>
+    <h1>Finanční rozhodnutí<br>s <em>jasnou hlavou.</em></h1>
+    <p class="hero-desc">
+      Čtyři kalkulačky pro každodenní finanční plánování —
+      od aktuálních kurzů měn přes hypoteční splátky
+      až po modelování investičního portfolia.
+      Vše zdarma, bez reklam, přímo v prohlížeči.
+    </p>
+  </section>
+
+  <div class="divider">
+    <div class="divider-line"></div>
+    <div class="divider-text">Kalkulačky</div>
+    <div class="divider-line"></div>
+  </div>
+
+  <div class="cards">
+
+    <a class="calc-card fade-up" href="currency-converter.html">
+      <span class="card-icon">💱</span>
+      <div class="card-tag">Live data · ECB</div>
+      <div class="card-title">Převodník měn</div>
+      <p class="card-desc">Aktuální kurzy přímo z Evropské centrální banky. Historický graf s výběrem období až 10 let.</p>
+      <div class="card-features">
+        <span class="chip">17 měn</span>
+        <span class="chip">Graf kurzu</span>
+        <span class="chip">1D – 10Y</span>
+        <span class="chip">Auto-refresh</span>
+      </div>
+      <div class="card-cta">Otevřít kalkulačku <span class="cta-arrow">→</span></div>
+    </a>
+
+    <a class="calc-card fade-up" href="hypotecni-kalkulacka.html">
+      <span class="card-icon">🏠</span>
+      <div class="card-tag">Anuitní · Progresivní · Degresivní</div>
+      <div class="card-title">Hypoteční kalkulačka</div>
+      <p class="card-desc">Výpočet měsíční splátky, celkového přeplatku a splátkového kalendáře pro celou dobu splácení.</p>
+      <div class="card-features">
+        <span class="chip">Koláčový graf</span>
+        <span class="chip">Splátkový kalendář</span>
+        <span class="chip">Fixace</span>
+        <span class="chip">LTV</span>
+      </div>
+      <div class="card-cta">Otevřít kalkulačku <span class="cta-arrow">→</span></div>
+    </a>
+
+    <a class="calc-card fade-up" href="investicni-kalkulacka.html">
+      <span class="card-icon">📈</span>
+      <div class="card-tag">Složené úroky · Inflace</div>
+      <div class="card-title">Investiční kalkulačka</div>
+      <p class="card-desc">Simulace růstu portfolia při pravidelném investování s přihlédnutím k inflaci a ročnímu navýšení příspěvků.</p>
+      <div class="card-features">
+        <span class="chip">Milníky</span>
+        <span class="chip">Reálná hodnota</span>
+        <span class="chip">Plán příspěvků</span>
+        <span class="chip">Zaokrouhlení</span>
+      </div>
+      <div class="card-cta">Otevřít kalkulačku <span class="cta-arrow">→</span></div>
+    </a>
+
+    <a class="calc-card fade-up" href="dph-kalkulacka.html">
+      <span class="card-icon">🧾</span>
+      <div class="card-tag">Základ · Brutto · Daň</div>
+      <div class="card-title">Kalkulačka DPH</div>
+      <p class="card-desc">Rychlý výpočet ceny bez a s DPH v sazbách 10 %, 12 % a 21 %. Hromadný výpočet pro více položek najednou.</p>
+      <div class="card-features">
+        <span class="chip">10 / 12 / 21 %</span>
+        <span class="chip">Vlastní sazba</span>
+        <span class="chip">Hromadný výpočet</span>
+        <span class="chip">Obousměrný</span>
+      </div>
+      <div class="card-cta">Otevřít kalkulačku <span class="cta-arrow">→</span></div>
+    </a>
+
+  </div>
+
+  <div class="stats-bar">
+    <div class="stat-item">
+      <span class="stat-num">4</span>
+      <div class="stat-desc">Kalkulačky</div>
+    </div>
+    <div class="stat-item">
+      <span class="stat-num">100%</span>
+      <div class="stat-desc">Zdarma & bez reklam</div>
+    </div>
+    <div class="stat-item">
+      <span class="stat-num">0</span>
+      <div class="stat-desc">Sledování dat</div>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  <span>© 2025 FinKalkulačky · Pouze pro ilustrační účely</span>
+  <span>Data: Frankfurter API (ECB) · Chart.js</span>
+</footer>
+
+<script>
+  const root   = document.documentElement;
+  const btn    = document.getElementById('themeToggle');
+  const icon   = document.getElementById('themeIcon');
+  const label  = document.getElementById('themeLabel');
+
+  // Načti uloženou volbu, jinak respektuj systémové nastavení
+  const saved = localStorage.getItem('theme');
+  const preferLight = window.matchMedia('(prefers-color-scheme: light)').matches;
+  const isLight = saved ? saved === 'light' : preferLight;
+
+  function applyTheme(light) {
+    root.classList.toggle('light', light);
+    icon.textContent  = light ? '☀️' : '🌙';
+    label.textContent = light ? 'Světlý' : 'Tmavý';
+    localStorage.setItem('theme', light ? 'light' : 'dark');
+  }
+
+  applyTheme(isLight);
+
+  btn.addEventListener('click', () => {
+    applyTheme(!root.classList.contains('light'));
+  });
+</script>
+
+</body>
+</html>

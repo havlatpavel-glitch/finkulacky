@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hypoteční kalkulačka</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg: #0e0e10;
+  --surface: #17171a;
+  --surface2: #1e1e22;
+  --border: #2a2a30;
+  --accent: #c8f060;
+  --accent2: #60d4f0;
+  --accent3: #f0a060;
+  --text: #e8e8ec;
+  --muted: #6a6a78;
+  --error: #f06060;
+  --success: #60f0a0;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Mono', monospace;
+  min-height: 100vh;
+  padding: 2rem;
+  background-image:
+    radial-gradient(ellipse 50% 40% at 10% 10%, rgba(200,240,96,0.05) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 50% at 90% 90%, rgba(96,212,240,0.05) 0%, transparent 60%);
+}
+
+.page-wrap {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.page-header {
+  margin-bottom: 2rem;
+}
+
+h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, var(--text) 60%, var(--muted));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.subtitle {
+  font-size: 0.72rem;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-top: 0.3rem;
+}
+
+/* CARD */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 2rem;
+  margin-bottom: 1.5rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+}
+
+.card-title {
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 1.5rem;
+}
+
+/* GRID INPUTS */
+.inputs-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.2rem;
+}
+
+@media (max-width: 600px) { .inputs-grid { grid-template-columns: 1fr; } }
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.field.full { grid-column: 1 / -1; }
+
+label {
+  font-size: 0.66rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-wrap .unit {
+  position: absolute;
+  right: 0.9rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+input[type="number"], input[type="text"], select {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: 'DM Mono', monospace;
+  font-size: 0.95rem;
+  padding: 0.65rem 2.8rem 0.65rem 0.9rem;
+  border-radius: 3px;
+  width: 100%;
+  outline: none;
+  transition: border-color 0.2s;
+  -moz-appearance: textfield;
+}
+
+input:focus, select:focus { border-color: var(--accent); }
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+/* RANGE SLIDER */
+.slider-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.3rem;
+}
+
+input[type="range"] {
+  flex: 1;
+  -webkit-appearance: none;
+  height: 3px;
+  background: var(--border);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--bg);
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.3); }
+
+.slider-val {
+  font-size: 0.8rem;
+  color: var(--accent);
+  min-width: 3.5rem;
+  text-align: right;
+}
+
+/* SELECT */
+select {
+  cursor: pointer;
+  appearance: none;
+  padding: 0.65rem 2.5rem 0.65rem 0.9rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236a6a78' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.9rem center;
+}
+
+/* TOGGLE GROUP */
+.toggle-group {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.toggle-btn {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-family: 'DM Mono', monospace;
+  font-size: 0.75rem;
+  padding: 0.55rem 0.5rem;
+  cursor: pointer;
+  transition: all 0.15s;
+  letter-spacing: 0.04em;
+  border-right: 1px solid var(--border);
+}
+
+.toggle-btn:last-child { border-right: none; }
+.toggle-btn:hover { color: var(--text); }
+.toggle-btn.active { background: var(--accent); color: var(--bg); font-weight: 500; }
+
+/* RESULTS */
+.results-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+@media (max-width: 600px) { .results-grid { grid-template-columns: 1fr 1fr; } }
+
+.result-tile {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.result-tile.highlight { border-left: 3px solid var(--accent); }
+.result-tile.highlight2 { border-left: 3px solid var(--accent2); }
+.result-tile.highlight3 { border-left: 3px solid var(--accent3); }
+
+.tile-label {
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.tile-value {
+  font-size: 1.3rem;
+  font-weight: 500;
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+
+.tile-value.big { font-size: 1.6rem; color: var(--accent); }
+.tile-sub { font-size: 0.68rem; color: var(--muted); }
+
+/* CHARTS LAYOUT */
+.charts-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+@media (max-width: 650px) { .charts-row { grid-template-columns: 1fr; } }
+
+.pie-wrap {
+  position: relative;
+  max-width: 220px;
+  margin: 0 auto;
+}
+
+.pie-legend {
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.72rem;
+  color: var(--text);
+}
+
+.legend-dot {
+  width: 10px; height: 10px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.legend-pct {
+  margin-left: auto;
+  color: var(--muted);
+}
+
+/* AMORTIZATION CHART */
+.bar-chart-wrap {
+  height: 220px;
+}
+
+/* SCHEDULE TABLE */
+.schedule-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.year-jump {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.year-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-family: 'DM Mono', monospace;
+  font-size: 0.65rem;
+  padding: 0.25rem 0.55rem;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.15s;
+  letter-spacing: 0.04em;
+}
+
+.year-btn:hover { border-color: var(--accent); color: var(--accent); }
+.year-btn.active { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+
+.table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+/* Scrollbar */
+.table-wrap::-webkit-scrollbar { width: 6px; height: 6px; }
+.table-wrap::-webkit-scrollbar-track { background: var(--bg); }
+.table-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+.table-wrap::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.75rem;
+}
+
+thead th {
+  background: var(--surface2);
+  color: var(--muted);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.7rem 0.8rem;
+  text-align: right;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  white-space: nowrap;
+}
+
+thead th:first-child { text-align: left; }
+
+tbody tr { border-bottom: 1px solid rgba(255,255,255,0.04); transition: background 0.1s; }
+tbody tr:hover { background: rgba(255,255,255,0.03); }
+tbody tr.year-row { background: rgba(200,240,96,0.04); }
+tbody tr.year-row td { color: var(--accent); font-weight: 500; }
+
+td {
+  padding: 0.55rem 0.8rem;
+  text-align: right;
+  color: var(--text);
+}
+
+td:first-child { text-align: left; color: var(--muted); }
+td.interest { color: var(--accent3); }
+td.principal { color: var(--accent2); }
+
+.table-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  padding: 0.75rem 0.8rem;
+  background: var(--surface2);
+  border-top: 1px solid var(--border);
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+/* HIDDEN */
+.hidden { display: none !important; }
+
+/* PRINT */
+@media print {
+  body { background: white; color: black; padding: 1rem; }
+  .card { border: 1px solid #ccc; box-shadow: none; }
+  .no-print { display: none; }
+  .table-wrap { max-height: none; overflow: visible; }
+}
+</style>
+</head>
+<body>
+<div class="page-wrap">
+
+  <div class="page-header">
+    <h1>Hypoteční kalkulačka</h1>
+    <p class="subtitle">Výpočet splátky · Splátkový kalendář · Analýza nákladů</p>
+  </div>
+
+  <!-- INPUTS -->
+  <div class="card">
+    <div class="card-title">Parametry hypotéky</div>
+    <div class="inputs-grid">
+
+      <div class="field">
+        <label>Cena nemovitosti</label>
+        <div class="input-wrap">
+          <input type="number" id="property" value="5000000" min="0" step="10000">
+          <span class="unit">Kč</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Vlastní zdroje (záloha)</label>
+        <div class="input-wrap">
+          <input type="number" id="downpayment" value="1000000" min="0" step="10000">
+          <span class="unit">Kč</span>
+        </div>
+        <div class="slider-row">
+          <input type="range" id="downpayment-pct-slider" min="0" max="90" value="20" step="1">
+          <span class="slider-val" id="downpayment-pct-val">20 %</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Úroková sazba</label>
+        <div class="input-wrap">
+          <input type="number" id="rate" value="4.5" min="0.1" max="30" step="0.01">
+          <span class="unit">% p.a.</span>
+        </div>
+        <div class="slider-row">
+          <input type="range" id="rate-slider" min="0.1" max="15" value="4.5" step="0.05">
+          <span class="slider-val" id="rate-val">4.5 %</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Doba splácení</label>
+        <div class="input-wrap">
+          <input type="number" id="years" value="25" min="1" max="40" step="1">
+          <span class="unit">let</span>
+        </div>
+        <div class="slider-row">
+          <input type="range" id="years-slider" min="1" max="40" value="25" step="1">
+          <span class="slider-val" id="years-val">25 let</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Fixace úrokové sazby</label>
+        <select id="fixation">
+          <option value="1">1 rok</option>
+          <option value="2">2 roky</option>
+          <option value="3" selected>3 roky</option>
+          <option value="5">5 let</option>
+          <option value="7">7 let</option>
+          <option value="10">10 let</option>
+          <option value="15">15 let</option>
+          <option value="0">Variabilní / po celou dobu</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>Typ splácení</label>
+        <div class="toggle-group" id="payment-type">
+          <button class="toggle-btn active" data-type="annuity">Anuitní</button>
+          <button class="toggle-btn" data-type="progressive">Progresivní</button>
+          <button class="toggle-btn" data-type="degressive">Degresivní</button>
+        </div>
+      </div>
+
+      <div class="field full">
+        <label>Pojištění nemovitosti + schopnosti splácet (měsíčně, volitelné)</label>
+        <div class="input-wrap">
+          <input type="number" id="insurance" value="0" min="0" step="100">
+          <span class="unit">Kč / měs</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- RESULTS SUMMARY -->
+  <div class="card" id="results-card">
+    <div class="card-title">Výsledky výpočtu</div>
+
+    <div class="results-grid">
+      <div class="result-tile highlight">
+        <div class="tile-label">Měsíční splátka</div>
+        <div class="tile-value big" id="r-monthly">—</div>
+        <div class="tile-sub" id="r-monthly-ins">bez pojištění</div>
+      </div>
+      <div class="result-tile highlight2">
+        <div class="tile-label">Výše hypotéky</div>
+        <div class="tile-value" id="r-loan">—</div>
+        <div class="tile-sub" id="r-ltv">LTV: —</div>
+      </div>
+      <div class="result-tile highlight3">
+        <div class="tile-label">Celkem zaplatíte</div>
+        <div class="tile-value" id="r-total">—</div>
+        <div class="tile-sub" id="r-total-sub">jistina + úroky</div>
+      </div>
+      <div class="result-tile">
+        <div class="tile-label">Celkové úroky</div>
+        <div class="tile-value" id="r-interest">—</div>
+        <div class="tile-sub" id="r-interest-sub">—</div>
+      </div>
+      <div class="result-tile">
+        <div class="tile-label">Přeplatek hypotéky</div>
+        <div class="tile-value" id="r-overpay">—</div>
+        <div class="tile-sub">úroky / jistina</div>
+      </div>
+      <div class="result-tile">
+        <div class="tile-label">Konec fixace</div>
+        <div class="tile-value" id="r-fixend">—</div>
+        <div class="tile-sub" id="r-fixbal">zbývající jistina</div>
+      </div>
+    </div>
+
+    <!-- CHARTS -->
+    <div class="charts-row">
+      <div>
+        <div class="card-title" style="margin-bottom:1rem">Struktura plateb</div>
+        <div class="pie-wrap">
+          <canvas id="pieChart"></canvas>
+        </div>
+        <div class="pie-legend" id="pie-legend"></div>
+      </div>
+      <div>
+        <div class="card-title" style="margin-bottom:1rem">Průběh splácení (ročně)</div>
+        <div class="bar-chart-wrap">
+          <canvas id="barChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCHEDULE -->
+  <div class="card">
+    <div class="schedule-controls">
+      <div class="card-title" style="margin-bottom:0">Splátkový kalendář</div>
+      <div class="year-jump" id="year-jump"></div>
+    </div>
+
+    <div class="table-wrap" id="table-wrap">
+      <table id="sched-table">
+        <thead>
+          <tr>
+            <th>Měsíc</th>
+            <th>Datum</th>
+            <th>Splátka</th>
+            <th>Úrok</th>
+            <th>Jistina</th>
+            <th>Zůstatek</th>
+          </tr>
+        </thead>
+        <tbody id="sched-body"></tbody>
+      </table>
+      <div class="table-footer" id="table-footer"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── State ──
+let paymentType = 'annuity';
+let pieChart = null;
+let barChart = null;
+
+// ── Helpers ──
+const $ = id => document.getElementById(id);
+const czk = (n, dec=0) => new Intl.NumberFormat('cs-CZ', {
+  style:'currency', currency:'CZK', maximumFractionDigits:dec
+}).format(n);
+const num = (n, dec=0) => new Intl.NumberFormat('cs-CZ', { maximumFractionDigits:dec }).format(n);
+
+// ── Sync inputs & sliders ──
+function syncSlider(inputId, sliderId, displayId, unit, dec=1) {
+  const inp = $(inputId);
+  const sld = $(sliderId);
+  const disp = $(displayId);
+
+  inp.addEventListener('input', () => {
+    sld.value = inp.value;
+    disp.textContent = parseFloat(inp.value).toFixed(dec) + ' ' + unit;
+    calculate();
+  });
+  sld.addEventListener('input', () => {
+    inp.value = sld.value;
+    disp.textContent = parseFloat(sld.value).toFixed(dec) + ' ' + unit;
+    calculate();
+  });
+}
+
+// Downpayment slider is percentage-based
+function syncDownpayment() {
+  const prop = $('property');
+  const dp   = $('downpayment');
+  const sld  = $('downpayment-pct-slider');
+  const disp = $('downpayment-pct-val');
+
+  const updateFromDP = () => {
+    const pct = Math.round((parseFloat(dp.value) / parseFloat(prop.value)) * 100);
+    sld.value = isNaN(pct) ? 20 : pct;
+    disp.textContent = (isNaN(pct) ? 20 : pct) + ' %';
+    calculate();
+  };
+
+  const updateFromSlider = () => {
+    dp.value = Math.round(parseFloat(prop.value) * sld.value / 100);
+    disp.textContent = sld.value + ' %';
+    calculate();
+  };
+
+  dp.addEventListener('input', updateFromDP);
+  prop.addEventListener('input', () => { updateFromSlider(); });
+  sld.addEventListener('input', updateFromSlider);
+}
+
+// ── Payment type toggle ──
+$('payment-type').addEventListener('click', e => {
+  if (!e.target.dataset.type) return;
+  document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+  e.target.classList.add('active');
+  paymentType = e.target.dataset.type;
+  calculate();
+});
+
+// ── Other inputs ──
+['rate', 'years', 'insurance', 'fixation'].forEach(id => {
+  $(id).addEventListener('input', calculate);
+  $(id).addEventListener('change', calculate);
+});
+
+// ── Core calculation ──
+function calculate() {
+  const propVal   = parseFloat($('property').value) || 0;
+  const dpVal     = parseFloat($('downpayment').value) || 0;
+  const annualRate = parseFloat($('rate').value) / 100 || 0;
+  const years      = parseInt($('years').value) || 0;
+  const fixYears   = parseInt($('fixation').value) || 0;
+  const insurance  = parseFloat($('insurance').value) || 0;
+  const months     = years * 12;
+  const monthlyR   = annualRate / 12;
+  const loan       = propVal - dpVal;
+
+  if (loan <= 0 || months <= 0 || annualRate <= 0) return;
+
+  // LTV
+  const ltv = (loan / propVal * 100).toFixed(1);
+
+  // Build amortization schedule
+  const schedule = buildSchedule(loan, monthlyR, months, paymentType);
+
+  const totalPaid    = schedule.reduce((s, r) => s + r.payment, 0);
+  const totalInterest= schedule.reduce((s, r) => s + r.interest, 0);
+  const totalPrincipal = loan;
+  const totalWithIns = totalPaid + insurance * months;
+  const overPayPct   = (totalInterest / loan * 100).toFixed(1);
+
+  // Fix end balance
+  let fixEndBalance = 0;
+  let fixEndDate = '';
+  const startDate = new Date();
+  startDate.setDate(1);
+  startDate.setMonth(startDate.getMonth() + 1);
+
+  if (fixYears > 0 && fixYears * 12 <= months) {
+    const fixMonth = fixYears * 12;
+    fixEndBalance = schedule[fixMonth - 1]?.balance || 0;
+    const d = new Date(startDate);
+    d.setMonth(d.getMonth() + fixMonth);
+    fixEndDate = d.toLocaleDateString('cs-CZ', { month:'long', year:'numeric' });
+  } else {
+    fixEndDate = 'Po celou dobu';
+  }
+
+  // Display results
+  const firstPayment = schedule[0]?.payment || 0;
+  $('r-monthly').textContent = czk(firstPayment);
+  $('r-monthly-ins').textContent = insurance > 0
+    ? `+ pojištění ${czk(insurance)} = ${czk(firstPayment + insurance)} / měs`
+    : 'bez pojištění';
+  $('r-loan').textContent    = czk(loan);
+  $('r-ltv').textContent     = `LTV: ${ltv} %`;
+  $('r-total').textContent   = czk(totalWithIns);
+  $('r-total-sub').textContent = insurance > 0 ? `vč. pojištění ${czk(insurance * months)}` : 'jistina + úroky';
+  $('r-interest').textContent  = czk(totalInterest);
+  $('r-interest-sub').textContent = `přeplatek ${overPayPct} %`;
+  $('r-overpay').textContent   = `${overPayPct} %`;
+  $('r-fixend').textContent    = fixEndDate;
+  $('r-fixbal').textContent    = fixEndBalance > 0 ? `zbývá ${czk(fixEndBalance)}` : '';
+
+  // Charts
+  renderPie(totalPrincipal, totalInterest, insurance * months);
+  renderBar(schedule, startDate);
+
+  // Schedule table
+  renderTable(schedule, startDate, fixYears, months);
+}
+
+// ── Amortization ──
+function buildSchedule(loan, monthlyR, months, type) {
+  const schedule = [];
+  let balance = loan;
+
+  // Annuity factor
+  const annuityPayment = loan * (monthlyR * Math.pow(1+monthlyR, months))
+    / (Math.pow(1+monthlyR, months) - 1);
+
+  // For degressive: equal principal
+  const equalPrincipal = loan / months;
+
+  for (let i = 0; i < months; i++) {
+    const interestPart = balance * monthlyR;
+    let payment, principalPart;
+
+    if (type === 'annuity') {
+      payment = annuityPayment;
+      principalPart = payment - interestPart;
+    } else if (type === 'degressive') {
+      principalPart = equalPrincipal;
+      payment = principalPart + interestPart;
+    } else { // progressive — linearly growing principal
+      // principal(i) = a + b*i, kde součet pro i=0..months-1 = loan
+      // Volíme b = a/months => a*(months + months*(months-1)/2/months) = loan
+      // Zjednodušeně: a = 2*loan / (months * (1 + 1)) => lineární od 0.5x do 1.5x průměru
+      const avg = loan / months;
+      // principal roste lineárně od avg*(1 - 0.5) do avg*(1 + 0.5)
+      // principal(i) = avg * (0.5 + i/(months-1))  ... součet = avg * months = loan ✓
+      const linFactor = months > 1 ? (0.5 + i / (months - 1)) : 1;
+      principalPart = avg * linFactor;
+      payment = principalPart + interestPart;
+    }
+
+    // Last payment correction
+    if (i === months - 1) {
+      principalPart = balance;
+      payment = principalPart + interestPart;
+    }
+
+    balance = Math.max(0, balance - principalPart);
+
+    schedule.push({
+      month: i + 1,
+      payment: Math.round(payment * 100) / 100,
+      interest: Math.round(interestPart * 100) / 100,
+      principal: Math.round(principalPart * 100) / 100,
+      balance: Math.round(balance * 100) / 100,
+    });
+  }
+
+  return schedule;
+}
+
+// ── Pie chart ──
+function renderPie(principal, interest, ins) {
+  const ctx = $('pieChart').getContext('2d');
+  if (pieChart) pieChart.destroy();
+
+  const data = ins > 0
+    ? [principal, interest, ins]
+    : [principal, interest];
+  const labels = ins > 0
+    ? ['Jistina', 'Úroky', 'Pojištění']
+    : ['Jistina', 'Úroky'];
+  const colors = ['#60d4f0', '#f0a060', '#c8f060'];
+  const total = data.reduce((a,b) => a+b, 0);
+
+  pieChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels,
+      datasets: [{ data, backgroundColor: colors.slice(0, data.length),
+        borderColor: '#17171a', borderWidth: 3, hoverBorderWidth: 3 }]
+    },
+    options: {
+      cutout: '62%',
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#17171a',
+          borderColor: '#2a2a30',
+          borderWidth: 1,
+          titleColor: '#6a6a78',
+          bodyColor: '#e8e8ec',
+          titleFont: { family:'DM Mono', size:11 },
+          bodyFont: { family:'DM Mono', size:12 },
+          callbacks: {
+            label: ctx => ` ${czk(ctx.raw)} (${(ctx.raw/total*100).toFixed(1)} %)`
+          }
+        }
+      }
+    }
+  });
+
+  // Legend
+  const legendEl = $('pie-legend');
+  legendEl.innerHTML = labels.map((l, i) => `
+    <div class="legend-item">
+      <div class="legend-dot" style="background:${colors[i]}"></div>
+      <span>${l}</span>
+      <span style="margin-left:auto;color:var(--muted)">${czk(data[i])}</span>
+      <span class="legend-pct">${(data[i]/total*100).toFixed(1)} %</span>
+    </div>
+  `).join('');
+}
+
+// ── Bar chart (annual) ──
+function renderBar(schedule, startDate) {
+  const ctx = $('barChart').getContext('2d');
+  if (barChart) barChart.destroy();
+
+  const years = Math.ceil(schedule.length / 12);
+  const labels = [], principals = [], interests = [], balances = [];
+
+  for (let y = 0; y < years; y++) {
+    const yr = schedule.slice(y * 12, y * 12 + 12);
+    labels.push(startDate.getFullYear() + y);
+    principals.push(Math.round(yr.reduce((s,r) => s+r.principal, 0)));
+    interests.push(Math.round(yr.reduce((s,r) => s+r.interest, 0)));
+    balances.push(yr[yr.length-1]?.balance || 0);
+  }
+
+  barChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label:'Jistina', data:principals, backgroundColor:'rgba(96,212,240,0.75)', borderRadius:2, stack:'a' },
+        { label:'Úroky',   data:interests,  backgroundColor:'rgba(240,160,96,0.75)',  borderRadius:2, stack:'a' },
+      ]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      interaction: { mode:'index', intersect:false },
+      plugins: {
+        legend: {
+          position:'bottom',
+          labels: { color:'#6a6a78', font:{ family:'DM Mono', size:10 }, boxWidth:10, padding:12 }
+        },
+        tooltip: {
+          backgroundColor:'#17171a', borderColor:'#2a2a30', borderWidth:1,
+          titleColor:'#6a6a78', bodyColor:'#e8e8ec',
+          titleFont:{ family:'DM Mono', size:11 }, bodyFont:{ family:'DM Mono', size:11 },
+          callbacks: { label: ctx => ` ${ctx.dataset.label}: ${czk(ctx.raw)}` }
+        }
+      },
+      scales: {
+        x: { stacked:true, grid:{ color:'rgba(255,255,255,0.035)' }, ticks:{ color:'#6a6a78', font:{ family:'DM Mono', size:9 }, maxRotation:45 }, border:{ color:'#2a2a30' } },
+        y: { stacked:true, grid:{ color:'rgba(255,255,255,0.035)' }, ticks:{ color:'#6a6a78', font:{ family:'DM Mono', size:9 }, maxTicksLimit:5, callback: v => czk(v) }, border:{ color:'#2a2a30' } }
+      }
+    }
+  });
+}
+
+// ── Schedule table ──
+function renderTable(schedule, startDate, fixYears, totalMonths) {
+  const tbody    = $('sched-body');
+  const footer   = $('table-footer');
+  const yearJump = $('year-jump');
+  tbody.innerHTML = '';
+  footer.innerHTML = '';
+  yearJump.innerHTML = '';
+
+  const totalYears = Math.ceil(schedule.length / 12);
+
+  // Year jump buttons
+  for (let y = 1; y <= totalYears; y++) {
+    const btn = document.createElement('button');
+    btn.className = 'year-btn' + (y===1?' active':'');
+    btn.textContent = startDate.getFullYear() + y - 1;
+    btn.dataset.year = y;
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.year-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      scrollToYear(y);
+    });
+    yearJump.appendChild(btn);
+  }
+
+  // All rows
+  schedule.forEach((row, idx) => {
+    const d = new Date(startDate);
+    d.setMonth(d.getMonth() + idx);
+    const isYearStart = idx % 12 === 0 && idx > 0;
+    const isFixEnd    = fixYears > 0 && idx + 1 === fixYears * 12;
+
+    const tr = document.createElement('tr');
+    tr.dataset.month = idx + 1;
+    if (isYearStart) tr.className = 'year-row';
+
+    tr.innerHTML = `
+      <td>${row.month}${isFixEnd ? ' ★' : ''}</td>
+      <td>${d.toLocaleDateString('cs-CZ', { month:'short', year:'numeric' })}</td>
+      <td>${czk(row.payment)}</td>
+      <td class="interest">${czk(row.interest)}</td>
+      <td class="principal">${czk(row.principal)}</td>
+      <td>${czk(row.balance)}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  // Footer totals
+  const totP = schedule.reduce((s,r) => s+r.payment, 0);
+  const totI = schedule.reduce((s,r) => s+r.interest, 0);
+  const totPrinc = schedule.reduce((s,r) => s+r.principal, 0);
+  footer.innerHTML = `
+    <span>Celkem splátky: <strong style="color:var(--text)">${czk(totP)}</strong></span>
+    <span>Úroky: <strong style="color:var(--accent3)">${czk(totI)}</strong></span>
+    <span>Jistina: <strong style="color:var(--accent2)">${czk(totPrinc)}</strong></span>
+  `;
+
+  // Note about fix end
+  if (fixYears > 0 && fixYears * 12 <= totalMonths) {
+    const noteRow = document.createElement('div');
+    noteRow.style.cssText = 'padding:.5rem .8rem; font-size:.65rem; color:var(--muted); border-top:1px solid var(--border);';
+    noteRow.textContent = '★ = konec fixace';
+    $('table-wrap').appendChild(noteRow);
+  }
+}
+
+function scrollToYear(y) {
+  const month = (y - 1) * 12 + 1;
+  const row = document.querySelector(`#sched-body tr[data-month="${month}"]`);
+  if (row) {
+    $('table-wrap').scrollTop = row.offsetTop - 40;
+  }
+}
+
+// ── Init ──
+syncSlider('rate', 'rate-slider', 'rate-val', '%', 2);
+syncSlider('years', 'years-slider', 'years-val', 'let', 0);
+syncDownpayment();
+
+$('property').addEventListener('input', calculate);
+
+calculate();
+</script>
+</body>
+</html>
